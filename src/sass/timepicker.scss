@@ -147,7 +147,7 @@ $rangeThumbBg: #dedede;
   height: 17px;
   background: linear-gradient(to right,$rangeTrackBg, $rangeTrackBg) left 50%/100% $rangeTrackHeight no-repeat;
 
-  &:first-child {
+  &:not(:last-child) {
     margin-bottom: 4px;
   }
 
@@ -250,3 +250,56 @@ $rangeThumbBg: #dedede;
   }
 }
 
+//  Dropdown time selector
+// -------------------------------------------------
+
+ul.datepicker--time-current li {
+    list-style: none;
+}
+
+div.datepicker--dropdown {
+  position: absolute;
+  display: none;
+  z-index: 11;
+
+  ul {
+    max-height: 250px;
+    overflow-x: hidden;
+    overflow-y: scroll;
+    background: #fff;
+    white-space: nowrap;
+    border: 1px solid #dbdbdb;
+    border-radius: 4px;
+    cursor: pointer;
+    padding: 4px 0 4px 0;
+  }
+
+  li {
+    padding: 4px 8px 4px 8px;
+    margin: 0;
+    position: static;
+
+    &:hover {
+      background-color: #f0f0f0;
+      border-radius: 4px;
+
+      div.datepicker--dropdown-submenu {
+        display: block;
+      }
+    }
+  }
+}
+
+div.datepicker--dropdown-submenu {
+  display: none;
+  position: absolute;
+
+  ul {
+    overflow: auto;
+  }
+}
+
+li.datepicker--dropdown-selected {
+    background-color: #5cc4ef;
+    border-radius: 4px;
+}
