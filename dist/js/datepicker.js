@@ -1967,13 +1967,28 @@
 
 ;(function () {
     var template = '<div class="datepicker--time">' +
-        '<div class="datepicker--time-current">' +
-        '   <span class="datepicker--time-current-hours">#{hourVisible}</span>' +
-        '   <span class="datepicker--time-current-colon">:</span>' +
-        '   <span class="datepicker--time-current-minutes">#{minValue}</span>' +
-        '   <span class="datepicker--time-current-colon">:</span>' +
-        '   <span class="datepicker--time-current-seconds">#{secValue}</span>' +
-        '</div>' +
+        '<ul class="datepicker--time-current">' +
+        '   <li>' +
+        '     <div class="datepicker--time-current-hours">#{hourVisible}</div>' +
+        '     <div class="datepicker--dropdown">' +
+        '       <ul>#{hourDropdown}</ul>' +
+        '     </div>' +
+        '   </li>' +
+        '   <div class="datepicker--time-current-colon">:</div>' +
+        '   <li>' +
+        '     <div class="datepicker--time-current-minutes">#{minValue}</div>' +
+        '     <div class="datepicker--dropdown">' +
+        '       <ul>#{minDropdown}</ul>' +
+        '     </div>' +
+        '   </li>' +
+        '   <div class="datepicker--time-current-colon">:</div>' +
+        '   <li>' +
+        '     <div class="datepicker--time-current-seconds">#{secValue}</div>' +
+        '     <div class="datepicker--dropdown">' +
+        '       <ul>#{secDropdown}</ul>' +
+        '     </div>' +
+        '   </li>' +
+        '</ul>' +
         '<div class="datepicker--time-sliders">' +
         '   <div class="datepicker--time-row">' +
         '      <input type="range" name="hours" value="#{hourValue}" min="#{hourMin}" max="#{hourMax}" step="#{hourStep}"/>' +
@@ -2011,6 +2026,51 @@
             this.$ranges.on('mouseup', this._onMouseUpRange.bind(this));
             this.$ranges.on('mousemove focus ', this._onMouseEnterRange.bind(this));
             this.$ranges.on('mouseout blur', this._onMouseOutRange.bind(this));
+
+            var timepicker = this;
+
+            // Show/hide the dropdowns and highlight selected values
+            $("ul.datepicker--time-current > li", this.$timepicker).hover(function(){
+                $('> div:first', this).addClass("-focus-");
+                $('div.datepicker--dropdown', this).css('display', 'block');
+                $('.datepicker--dropdown li[data-type="all"][data-hours=' + timepicker.hours + '][data-minutes=' + timepicker.minutes + '][data-seconds=' + timepicker.seconds + ']', this).addClass('datepicker--dropdown-selected');
+                $('.datepicker--dropdown li[data-type="hours"][data-hours=' + timepicker.hours + ']', this).addClass('datepicker--dropdown-selected');
+                $('.datepicker--dropdown li[data-type="minutes"][data-minutes=' + timepicker.minutes + ']', this).addClass('datepicker--dropdown-selected');
+                $('.datepicker--dropdown li[data-type="seconds"][data-seconds=' + timepicker.seconds + ']', this).addClass('datepicker--dropdown-selected');
+            }, function(){
+                $('> div:first',this).removeClass("-focus-");
+                $('div.datepicker--dropdown', this).css('display', 'none');
+                $('.datepicker--dropdown li', this).removeClass('datepicker--dropdown-selected');
+            });
+
+            // Position submenus. See https://css-tricks.com/popping-hidden-overflow/
+            $('div.datepicker--dropdown > ul > li', this.$timepicker).mouseenter(function() {
+                var $menuItem = $(this);
+                var $submenuWrapper = $('> div.datepicker--dropdown-submenu', $menuItem);
+                // grab the menu item's position relative to its positioned parent
+                var menuItemPos = $menuItem.position();
+                // place the submenu in the correct position relevant to the menu item
+                $submenuWrapper.css({
+                    top: menuItemPos.top,
+                    left: menuItemPos.left + $menuItem.outerWidth()
+                });
+            });
+
+            // Handle mouse click
+            $('div.datepicker--dropdown li', this.$timepicker).click(function() {
+                if (this.dataset.hours !== undefined) {
+                    timepicker.hours = this.dataset.hours;
+                }
+                if (this.dataset.minutes !== undefined) {
+                    timepicker.minutes = this.dataset.minutes;
+                }
+                if (this.dataset.seconds !== undefined) {
+                    timepicker.seconds = this.dataset.seconds;
+                }
+                $(this).parents('ul.datepicker--time-current div.datepicker--dropdown').css('display', 'none');
+                timepicker.d.update();
+                return false;
+            });
         },
 
         _setTime: function (date) {
@@ -2093,6 +2153,66 @@
             }
         },
 
+        _generateHoursDropown: function() {
+            var dropdown = '';
+            const minutesStep = 15;
+            const minutesMinStep = Math.ceil(this.minMinutes / minutesStep) * minutesStep;
+            const minutesMaxStep = Math.floor(this.maxMinutes / minutesStep) * minutesStep;
+            const minSecondsPretty = this.minSeconds < 10 ? '0' + this.minSeconds : this.minSeconds;
+            for (var hours = this.minHours; hours <= this.maxHours; hours++) {
+                var hoursPretty = hours;
+                var dayPeriod = '';
+                if (this.d.ampm) {
+                    if (hours == 0) {
+                        hoursPretty = 12;
+                    } else if (hours > 12) {
+                        hoursPretty -= 12;
+                    }
+                    dayPeriod = '<span class="datepicker--time-current-ampm">' + (hours < 12 ? 'am' : 'pm') + '</span>';
+                }
+                if (hoursPretty < 10) {
+                    hoursPretty = '0' + hoursPretty;
+                }
+                dropdown += '<li data-type="hours" data-hours="' + hours + '">' + hoursPretty + dayPeriod;
+                if (minutesMinStep < minutesMaxStep) {
+                    dropdown += ' &nbsp;&rsaquo;<div class="datepicker--dropdown-submenu"><ul>';
+                    for (var minutes = minutesMinStep; minutes <= minutesMaxStep; minutes += minutesStep) {
+                        dropdown += '<li data-type="all" data-hours="' + hours + '" data-minutes="' + minutes + '" data-seconds="' + this.minSeconds + '">' + hoursPretty + ':' + (minutes < 10 ? '0' + minutes : minutes) + ':' + minSecondsPretty + dayPeriod + '</li>';
+                    }
+                    dropdown += '</ul></div>';
+                }
+                dropdown += '</li>';
+            }
+            return dropdown;
+        },
+
+        _generateMinutesDropown: function() {
+            return this._generateMinutesAndSecondsDropown(this.minMinutes, this.maxMinutes, 'minutes');
+        },
+
+        _generateSecondsDropown: function() {
+            return this._generateMinutesAndSecondsDropown(this.minSeconds, this.maxSeconds, 'seconds');
+        },
+
+        _generateMinutesAndSecondsDropown: function(min, max, kind) {
+            const step = 5;
+            var dropdown = '';
+            for (var bigstep = min; bigstep <= max; bigstep = Math.floor(bigstep / step) * step + step) {
+                dropdown +=
+                    '<li data-type="' + kind + '" data-' + kind + '="' + bigstep + '">' + (bigstep<10 ? '0' + bigstep : bigstep) + ' &nbsp;&rsaquo;' +
+                    '  <div class="datepicker--dropdown-submenu">' +
+                    '    <ul>';
+                for (var singlestep = bigstep + 1; singlestep < Math.floor(bigstep / step) * step + step && singlestep <= max; singlestep++) {
+                    dropdown += '<li data-type="' + kind + '" data-' + kind + '="' + singlestep + '">' + (singlestep<10 ? '0' + singlestep : singlestep) + '</li>';
+                }
+                dropdown +=
+                    '    </ul>' +
+                    '  </div>' +
+                    '</li>';
+            }
+            return dropdown;
+        },
+
         _buildHTML: function () {
             var lz = dp.getLeadingZeroNum,
                 data = {
@@ -2101,14 +2221,17 @@
                     hourStep: this.opts.hoursStep,
                     hourValue: this.hours,
                     hourVisible: lz(this.displayHours),
+                    hourDropdown: this._generateHoursDropown(),
                     minMin: this.minMinutes,
                     minMax: lz(this.maxMinutes),
                     minStep: this.opts.minutesStep,
                     minValue: lz(this.minutes),
+                    minDropdown: this._generateMinutesDropown(),
                     secMin: this.minSeconds,
                     secMax: lz(this.maxSeconds),
                     secStep: this.opts.secondsStep,
-                    secValue: lz(this.seconds)
+                    secValue: lz(this.seconds),
+                    secDropdown: this._generateSecondsDropown(),
                 },
                 _template = dp.template(template, data);
 
